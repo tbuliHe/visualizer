@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Plot from 'react-plotly.js';
-import { Layout, Input, Button, Card, Alert, Spin, Typography } from 'antd';
-import { LineChartOutlined } from '@ant-design/icons';
+import { Layout, Input, Button, Card, Alert, Spin, Typography, List, Switch, Tag, Row, Col } from 'antd';
+import { LineChartOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 
 const { Header, Content } = Layout;
 const { TextArea } = Input;
@@ -9,10 +9,11 @@ const { Title } = Typography;
 
 const App = () => {
   const [input, setInput] = useState('');
-  const [data, setData] = useState(null);
+  const [functions, setFunctions] = useState([]); // 存储多个函数的数据
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // 添加新函数
   const handleVisualize = async () => {
     if (!input.trim()) {
       setError('请输入函数描述');
@@ -38,13 +39,35 @@ const App = () => {
         throw new Error('No data points received');
       }
       
-      setData(result.dataPoints);
+      // 添加新函数到列表
+      setFunctions(prev => [...prev, {
+        id: Date.now(),
+        description: input,
+        data: result.dataPoints,
+        visible: true,
+        color: `hsl(${Math.random() * 360}, 70%, 50%)` // 随机颜色
+      }]);
+      
+      // 清空输入框
+      setInput('');
     } catch (err) {
       console.error('Visualization error:', err);
       setError(err.response?.data?.error || '服务暂时不可用，请稍后再试');
     } finally {
       setLoading(false);
     }
+  };
+
+  // 删除函数
+  const handleDelete = (id) => {
+    setFunctions(prev => prev.filter(f => f.id !== id));
+  };
+
+  // 切换函数可见性
+  const handleToggleVisibility = (id) => {
+    setFunctions(prev => prev.map(f => 
+      f.id === id ? { ...f, visible: !f.visible } : f
+    ));
   };
 
   return (
@@ -55,102 +78,147 @@ const App = () => {
           <Title level={3} style={{ margin: '16px 0' }}>Fuzzy Function Visualizer</Title>
         </div>
       </Header>
-      <Content style={{ 
-        padding: '24px', 
-        maxWidth: '100%', // 移除最大宽度限制
-        margin: '0 auto' 
-      }}>
-        <Card style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
-          width: '100%',
-          padding: '24px'
-        }}>
-          <TextArea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="描述您的函数 (例如: 'y is approximately x squared')"
-            autoSize={{ minRows: 3, maxRows: 6 }}
-            style={{ marginBottom: '16px' }}
-          />
-          <Button 
-            type="primary" 
-            onClick={handleVisualize} 
-            loading={loading}
-            icon={<LineChartOutlined />}
-          >
-            可视化
-          </Button>
+      <Content style={{ padding: '24px', height: 'calc(100vh - 64px)' }}>
+        <Row gutter={24}>
+          {/* 左侧控制面板 */}
+          <Col span={8}>
+            <Card style={{ height: '100%', overflow: 'auto' }}>
+              <div style={{ marginBottom: '20px' }}>
+                <TextArea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="描述您的函数 (例如: 'y is approximately x squared')"
+                  autoSize={{ minRows: 3, maxRows: 6 }}
+                  style={{ marginBottom: '16px' }}
+                />
+                <Button 
+                  type="primary" 
+                  onClick={handleVisualize} 
+                  loading={loading}
+                  icon={<PlusOutlined />}
+                >
+                  添加函数
+                </Button>
+              </div>
 
-          {error && (
-            <Alert 
-              message="错误" 
-              description={error} 
-              type="error" 
-              showIcon 
-              style={{ marginTop: '16px' }}
-            />
-          )}
+              {error && (
+                <Alert 
+                  message="错误" 
+                  description={error} 
+                  type="error" 
+                  showIcon 
+                  style={{ marginBottom: '16px' }}
+                />
+              )}
 
-          {loading && (
-            <div style={{ textAlign: 'center', margin: '20px' }}>
-              <Spin size="large" />
-            </div>
-          )}
+              {loading && (
+                <div style={{ textAlign: 'center', margin: '20px' }}>
+                  <Spin size="large" />
+                </div>
+              )}
 
-          {data && (
-            <div style={{ 
-              marginTop: '20px',
-              width: '90vw', // 使用视窗宽度的90%
-              height: '90vh', // 使用视窗高度的90%
-              maxWidth: '90vh', // 确保宽度不超过高度，保持正方形
-              margin: '20px auto'
-            }}>
-              <Plot
-                data={[{
-                  x: data.map(p => p.x),
-                  y: data.map(p => p.y),
-                  type: 'scatter',
-                  mode: 'lines',
-                  line: { color: '#1890ff' },
-                }]}
-                layout={{
-                  width: undefined,
-                  height: undefined, // 移除固定高度
-                  title: '函数可视化',
-                  dragmode: 'zoom',
-                  showlegend: false,
-                  autosize: true,
-                  margin: { l: 50, r: 50, t: 50, b: 50 },
-                  xaxis: {
-                    autorange: true,
-                    scaleanchor: "y",
-                    scaleratio: 1,
-                    constrain: 'domain', // 确保比例约束在可用空间内
-                  },
-                  yaxis: {
-                    autorange: true,
-                    scaleanchor: "x", // 双向锁定比例
-                    scaleratio: 1,
-                    constrain: 'domain',
-                  },
-                  aspectratio: { x: 1, y: 1 }, // 强制 1:1 的比例
-                }}
-                config={{
-                  scrollZoom: true,
-                  displayModeBar: true,
-                  responsive: true,
-                }}
-                style={{ 
-                  width: '100%',
-                  height: '100%' 
-                }}
-                useResizeHandler={true} // 启用自动调整大小
-              />
-            </div>
-          )}
-        </Card>
+              {functions.length > 0 && (
+                <List
+                  style={{ marginBottom: '20px' }}
+                  itemLayout="horizontal"
+                  dataSource={functions}
+                  renderItem={(func) => (
+                    <List.Item
+                      actions={[
+                        <Switch
+                          checked={func.visible}
+                          onChange={() => handleToggleVisibility(func.id)}
+                          checkedChildren="显示"
+                          unCheckedChildren="隐藏"
+                          size="small"
+                        />,
+                        <Button 
+                          type="text" 
+                          danger 
+                          icon={<DeleteOutlined />}
+                          size="small"
+                          onClick={() => handleDelete(func.id)}
+                        />
+                      ]}
+                    >
+                      <List.Item.Meta
+                        avatar={
+                          <Tag color={func.color} style={{ width: '20px', height: '20px' }} />
+                        }
+                        title={
+                          <div style={{ 
+                            whiteSpace: 'nowrap', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis', 
+                            maxWidth: '200px' 
+                          }}>
+                            {func.description}
+                          </div>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
+            </Card>
+          </Col>
+
+          {/* 右侧图表区域 */}
+          <Col span={16}>
+            <Card style={{ height: '100%' }}>
+              {functions.length > 0 && (
+                <Plot
+                  data={functions
+                    .filter(f => f.visible)
+                    .map(f => ({
+                      x: f.data.map(p => p.x),
+                      y: f.data.map(p => p.y),
+                      type: 'scatter',
+                      mode: 'lines',
+                      name: f.description.substring(0, 30) + (f.description.length > 30 ? '...' : ''),
+                      line: { color: f.color },
+                    }))}
+                  layout={{
+                    width: undefined,
+                    height: undefined,
+                    title: '函数可视化',
+                    showlegend: true,
+                    autosize: true,
+                    margin: { l: 50, r: 50, t: 50, b: 50 },
+                    xaxis: {
+                      autorange: true,
+                      scaleanchor: "y",
+                      scaleratio: 1,
+                    },
+                    yaxis: {
+                      autorange: true,
+                      scaleanchor: "x",
+                      scaleratio: 1,
+                    },
+                    legend: {
+                      orientation: 'h',
+                      yanchor: 'bottom',
+                      y: -0.2,
+                      xanchor: 'center',
+                      x: 0.5,
+                      traceorder: 'normal'
+                    }
+                  }}
+                  config={{
+                    scrollZoom: true,
+                    displayModeBar: true,
+                    responsive: true,
+                  }}
+                  style={{ 
+                    width: '100%',
+                    height: 'calc(100vh - 160px)'
+                  }}
+                  useResizeHandler={true}
+                />
+              )}
+            </Card>
+          </Col>
+        </Row>
       </Content>
     </Layout>
   );
