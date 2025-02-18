@@ -23,11 +23,17 @@ Return ONLY valid JavaScript code that generates data points for plotting. The c
 2. Store results in global.dataPoints variable (NOT const/let dataPoints)
 3. Handle regular, parametric, and polar functions
 4. Return array of {x, y} points
+5. Default x range should be [-10, 10] with 200 points unless specified otherwise
+6. Analyze function behavior to adjust range appropriately
+7. Ensure reasonable y-axis scaling relative to x-axis
+
 Example:
 // Define the function
-const func = (x) => x * math.log(x);
-// Generate x values
-const xValues = math.range(0.1, 10, 0.1).toArray();
+const func = (x) => x * math.log(math.abs(x));
+// Generate x values with appropriate range and density
+const xMin = -10, xMax = 10;
+const numPoints = 200;
+const xValues = math.range(xMin, xMax, (xMax - xMin) / numPoints).toArray();
 // Calculate y values
 const yValues = xValues.map(func);
 // Create data points
